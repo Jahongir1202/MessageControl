@@ -5,14 +5,17 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
 from .models import User,MessageUser
 def show_last_message(request):
-    last_message = MessageUser.objects.last()  # Get the last message from DB
-    if last_message:
-        taken_by = last_message.taken_by.username if last_message.taken_by else None
-        message = {'text': last_message.text, 'taken_by': taken_by}
-    else:
-        message = 'Hech qanday xabar mavjud emas.'
+    messages = MessageUser.objects.all().order_by('created_at')  # Hammasini olish
+    message_data = []
 
-    return render(request, 'list.html', {'message': message})
+    for msg in messages:
+        message_data.append({
+            'id': msg.id,
+            'text': msg.text,
+            'taken_by': msg.taken_by.username if msg.taken_by else None
+        })
+
+    return render(request, 'list.html', {'messages': message_data})
 
 
 def login_view(request):

@@ -7,31 +7,44 @@
 </head>
 <body>
     <h2>📩 Telegramdan kelgan xabarlar</h2>
-    <div id="messages">Yangi xabarlar shu yerda chiqadi...{{ message }}</div>
+    <div id="messages">
+        {% for msg in messages %}
+            {% if not msg.taken_by or msg.taken_by == request.session.user_id %}
+                <div id="msg-{{ msg.id }}">
+                    📩 {{ msg.text }}
+                    {% if not msg.taken_by %}
+                        <button onclick="takeMessage({{ msg.id }})">Olindi ✅</button>
+                    {% else %}
+                        <b> (Olingan: {{ msg.taken_by }})</b>
+                    {% endif %}
+                </div>
+            {% endif %}
+        {% endfor %}
+    </div>
 
     <script>
-        // WebSocketni yaratish
         const socket = new WebSocket('ws://' + window.location.host + '/ws/messages/');
 
-        // WebSocket'dan xabar olganda
         socket.onmessage = function(e) {
             const data = JSON.parse(e.data);
             const box = document.getElementById('messages');
 
-            // Xabarlarni HTMLga qo'shish
             if (data.type === 'message') {
                 const el = document.createElement('div');
                 el.id = "msg-" + data.id;
                 let takenByText = data.taken_by ? ` (Taken by: ${data.taken_by})` : "";
                 el.innerHTML = `📩 ${data.message} ${takenByText} <button onclick="takeMessage(${data.id})">Olindi ✅</button>`;
-                box.appendChild(el);
+                if (box.firstChild) {
+                        box.insertBefore(el, box.firstChild);
+                    } else {
+                        box.appendChild(el);
+                    }
             } else if (data.type === 'delete') {
                 const el = document.getElementById("msg-" + data.id);
                 if (el) el.remove();
             }
         };
 
-        // Xabarni olishni belgilang
         function takeMessage(id) {
             socket.send(JSON.stringify({
                 action: 'take',
