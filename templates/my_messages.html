@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Mening xabarlarim</title>
+</head>
+<body>
+    <h1>O'zingiz olgan xabarlar</h1>
+    <a href="{% url 'show_last_message' %}">Orqaga qaytish</a> |
+    <a href="{% url 'logout' %}">Chiqish</a>
+    <hr>
+    {% for message in messages %}
+        <div style="border: 1px solid #ccc; padding: 10px; margin-bottom: 10px;">
+            <strong>{{ message.taken_by.username }}</strong><br>
+            {{ message.text }}<br>
+            <small>{{ message.created_at }}</small>
+        </div>
+    {% empty %}
+        <p>Siz hali hech qanday xabar olmadingiz.</p>
+    {% endfor %}
+
+</body>
+</html>
