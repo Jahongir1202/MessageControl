@@ -1,56 +1,119 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="uz">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Telegram Xabarlar</title>
+    <title>Mening xabarlarim</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f5f5;
+        }
+        .container {
+            width: 80%;
+            margin: auto;
+            padding: 20px;
+            background-color: #fff;
+            min-height: 100vh;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        .message {
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 8px;
+            background-color: #fefefe;
+        }
+        .btn {
+            padding: 6px 10px;
+            margin-right: 5px;
+            cursor: pointer;
+            border: none;
+            border-radius: 4px;
+        }
+        .edit-btn {
+            background-color: #3498db;
+            color: white;
+        }
+        .delete-btn {
+            background-color: #e74c3c;
+            color: white;
+        }
+    </style>
 </head>
 <body>
-    <h2>📩 Telegramdan kelgan xabarlar</h2>
+<div class="container">
+    <h1>📥 Mening xabarlarim</h1>
+
     <div id="messages">
         {% for msg in messages %}
-            {% if not msg.taken_by or msg.taken_by == request.session.user_id %}
+            {% if not msg.taken_by or msg.taken_by.id == request.session.user_id %}
                 <div id="msg-{{ msg.id }}">
                     📩 {{ msg.text }}
                     {% if not msg.taken_by %}
                         <button onclick="takeMessage({{ msg.id }})">Olindi ✅</button>
                     {% else %}
-                        <b> (Olingan: {{ msg.taken_by }})</b>
+                        <b>(Olingan: {{ msg.taken_by.username }})</b>
                     {% endif %}
                 </div>
             {% endif %}
         {% endfor %}
     </div>
 
-    <script>
-        const socket = new WebSocket('ws://' + window.location.host + '/ws/messages/');
+    <h2 style="margin-top: 40px;">📬 Siz olgan xabarlar</h2>
 
-        socket.onmessage = function(e) {
-            const data = JSON.parse(e.data);
-            const box = document.getElementById('messages');
+    {% for msg in messages %}
+        {% if msg.taken_by and msg.taken_by.id == request.session.user_id %}
+            <div class="message" id="my-msg-{{ msg.id }}">
+                <form method="POST" action="{% url 'edit_message' msg.id %}">
+                    {% csrf_token %}
+                    <textarea name="text" rows="3" style="width: 100%;">{{ msg.text }}</textarea><br>
+                    <button class="btn edit-btn" type="submit">✏️ Tahrirlash</button>
+                    <a href="{% url 'delete_message' msg.id %}">
+                        <button type="button" class="btn delete-btn">🗑️ O‘chirish</button>
+                    </a>
+                </form>
+            </div>
+        {% endif %}
+    {% empty %}
+        <p>🚫 Sizda hozircha olingan xabarlar yo‘q.</p>
+    {% endfor %}
 
-            if (data.type === 'message') {
-                const el = document.createElement('div');
-                el.id = "msg-" + data.id;
-                let takenByText = data.taken_by ? ` (Taken by: ${data.taken_by})` : "";
-                el.innerHTML = `📩 ${data.message} ${takenByText} <button onclick="takeMessage(${data.id})">Olindi ✅</button>`;
-                if (box.firstChild) {
-                        box.insertBefore(el, box.firstChild);
-                    } else {
-                        box.appendChild(el);
-                    }
-            } else if (data.type === 'delete') {
-                const el = document.getElementById("msg-" + data.id);
-                if (el) el.remove();
+</div>
+
+<script>
+    const socket = new WebSocket('ws://' + window.location.host + '/ws/messages/');
+
+    socket.onmessage = function(e) {
+        const data = JSON.parse(e.data);
+        const box = document.getElementById('messages');
+
+        if (data.type === 'message') {
+            const el = document.createElement('div');
+            el.id = "msg-" + data.id;
+            let takenByText = data.taken_by ? ` (Olingan: ${data.taken_by})` : "";
+            el.innerHTML = `📩 ${data.message} ${takenByText} <button onclick="takeMessage(${data.id})">Olindi ✅</button>`;
+            if (box.firstChild) {
+                box.insertBefore(el, box.firstChild);
+            } else {
+                box.appendChild(el);
             }
-        };
-
-        function takeMessage(id) {
-            socket.send(JSON.stringify({
-                action: 'take',
-                id: id
-            }));
+        } else if (data.type === 'delete') {
+            const el = document.getElementById("msg-" + data.id);
+            if (el) el.remove();
         }
-    </script>
+    };
+
+    function takeMessage(id) {
+        socket.send(JSON.stringify({
+            action: 'take',
+            id: id
+        }));
+    }
+</script>
 </body>
 </html>
