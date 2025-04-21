@@ -2,6 +2,7 @@
 <html lang="uz">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mening xabarlarim</title>
     <style>
         body {
@@ -16,12 +17,10 @@
             padding: 20px;
             background-color: #fff;
             min-height: 100vh;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
         }
-        h1, h2 {
+        h1 {
             text-align: center;
             color: #333;
-            margin-bottom: 20px;
         }
         .message {
             border: 1px solid #ddd;
@@ -29,8 +28,6 @@
             margin-bottom: 15px;
             border-radius: 8px;
             background-color: #fefefe;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-            overflow-wrap: break-word;
         }
         .btn {
             padding: 6px 10px;
@@ -47,32 +44,23 @@
             background-color: #e74c3c;
             color: white;
         }
-        .message-container {
-            max-height: 70vh;
-            overflow-y: auto;
-            margin-bottom: 20px;
-        }
-        .empty-message {
-            text-align: center;
-            color: #999;
-            font-style: italic;
-        }
     </style>
 </head>
 <body>
 <div class="container">
     <h1>📥 Mening xabarlarim</h1>
 
-    <div class="message-container" id="messages">
+    <div id="messages">
         {% for msg in messages %}
             {% if not msg.taken_by or msg.taken_by.id == request.session.user_id %}
                 <div class="message" id="msg-{{ msg.id }}">
                     📩 {{ msg.text }}
                     {% if not msg.taken_by %}
-                        <button onclick="takeMessage({{ msg.id }})">Olindi ✅</button>
+                        <button onclick="takeMessage({{ msg.id }}, this)">Olindi ✅</button>
                     {% else %}
-<!--                        <b>(Olingan: {{ msg.taken_by.username }})</b>-->
+                        <b>(Olingan: {{ msg.taken_by.username }})</b>
                     {% endif %}
+                    <button onclick="deleteMessage({{ msg.id }})" class="btn delete-btn">🗑️ O‘chirish</button>
                 </div>
             {% endif %}
         {% endfor %}
@@ -94,7 +82,7 @@
             </div>
         {% endif %}
     {% empty %}
-        <p class="empty-message">🚫 Sizda hozircha olingan xabarlar yo‘q.</p>
+        <p>🚫 Sizda hozircha olingan xabarlar yo‘q.</p>
     {% endfor %}
 
 </div>
@@ -111,16 +99,15 @@
             el.classList.add('message');
             el.id = "msg-" + data.id;
             let takenByText = data.taken_by ? ` (Olingan: ${data.taken_by})` : "";
-            el.innerHTML = `📩 ${data.message} ${takenByText} <button onclick="takeMessage(${data.id})">Olindi ✅</button>`;
-            if (box.firstChild) {
-                box.insertBefore(el, box.firstChild);
-            } else {
-                box.appendChild(el);
-            }
+            el.innerHTML = `📩 ${data.message} ${takenByText} <button onclick="takeMessage(${data.id}, this)">Olindi ✅</button> <button onclick="deleteMessage(${data.id})" class="btn delete-btn">🗑️ O‘chirish</button>`;
+
+            // Yangi kelgan xabarlarni yuqoriga qo'shish
+            box.insertBefore(el, box.firstChild);
         } else if (data.type === 'delete') {
             const el = document.getElementById("msg-" + data.id);
             if (el) el.remove();
         } else if (data.type === 'taken') {
+            // Xabarni olingan deb belgilash
             const msg = document.getElementById("msg-" + data.id);
             if (msg) {
                 msg.innerHTML = `📩 ${msg.innerText} (Olingan: ${data.taken_by})`;
@@ -128,16 +115,36 @@
         }
     };
 
-    function takeMessage(id) {
+    function takeMessage(id, btn) {
         socket.send(JSON.stringify({
             action: 'take',
             id: id
         }));
 
-        // Sahifani yangilash
+        // Xabarni sahifadan olib tashlash
+        const messageDiv = document.getElementById('msg-' + id);
+        if (messageDiv) {
+            messageDiv.remove();
+        }
+
+        // Xabarni olingan deb belgilash
         setTimeout(() => {
-            location.reload();
-        }, 1000); // 1 soniya ichida sahifa yangilanadi
+            location.reload(); // Sahifa yangilanishi
+        }, 1000);
+    }
+
+    // Xabarni o'chirish funksiyasi
+    function deleteMessage(id) {
+        socket.send(JSON.stringify({
+            action: 'delete',
+            id: id
+        }));
+
+        // Xabarni brauzerda o'chirish
+        const messageDiv = document.getElementById('msg-' + id);
+        if (messageDiv) {
+            messageDiv.remove();
+        }
     }
 </script>
 </body>
