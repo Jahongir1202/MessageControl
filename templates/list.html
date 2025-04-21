@@ -16,10 +16,12 @@
             padding: 20px;
             background-color: #fff;
             min-height: 100vh;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
         }
-        h1 {
+        h1, h2 {
             text-align: center;
             color: #333;
+            margin-bottom: 20px;
         }
         .message {
             border: 1px solid #ddd;
@@ -27,6 +29,8 @@
             margin-bottom: 15px;
             border-radius: 8px;
             background-color: #fefefe;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            overflow-wrap: break-word;
         }
         .btn {
             padding: 6px 10px;
@@ -43,16 +47,26 @@
             background-color: #e74c3c;
             color: white;
         }
+        .message-container {
+            max-height: 70vh;
+            overflow-y: auto;
+            margin-bottom: 20px;
+        }
+        .empty-message {
+            text-align: center;
+            color: #999;
+            font-style: italic;
+        }
     </style>
 </head>
 <body>
 <div class="container">
     <h1>📥 Mening xabarlarim</h1>
 
-    <div id="messages">
+    <div class="message-container" id="messages">
         {% for msg in messages %}
             {% if not msg.taken_by or msg.taken_by.id == request.session.user_id %}
-                <div id="msg-{{ msg.id }}">
+                <div class="message" id="msg-{{ msg.id }}">
                     📩 {{ msg.text }}
                     {% if not msg.taken_by %}
                         <button onclick="takeMessage({{ msg.id }})">Olindi ✅</button>
@@ -80,7 +94,7 @@
             </div>
         {% endif %}
     {% empty %}
-        <p>🚫 Sizda hozircha olingan xabarlar yo‘q.</p>
+        <p class="empty-message">🚫 Sizda hozircha olingan xabarlar yo‘q.</p>
     {% endfor %}
 
 </div>
@@ -94,6 +108,7 @@
 
         if (data.type === 'message') {
             const el = document.createElement('div');
+            el.classList.add('message');
             el.id = "msg-" + data.id;
             let takenByText = data.taken_by ? ` (Olingan: ${data.taken_by})` : "";
             el.innerHTML = `📩 ${data.message} ${takenByText} <button onclick="takeMessage(${data.id})">Olindi ✅</button>`;
@@ -106,7 +121,6 @@
             const el = document.getElementById("msg-" + data.id);
             if (el) el.remove();
         } else if (data.type === 'taken') {
-            // Xabarni olingan deb belgilash
             const msg = document.getElementById("msg-" + data.id);
             if (msg) {
                 msg.innerHTML = `📩 ${msg.innerText} (Olingan: ${data.taken_by})`;
@@ -119,6 +133,11 @@
             action: 'take',
             id: id
         }));
+
+        // Sahifani yangilash
+        setTimeout(() => {
+            location.reload();
+        }, 1000); // 1 soniya ichida sahifa yangilanadi
     }
 </script>
 </body>
