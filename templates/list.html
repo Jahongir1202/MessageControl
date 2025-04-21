@@ -44,108 +44,105 @@
             background-color: #e74c3c;
             color: white;
         }
+        .send-btn {
+            background-color: #2ecc71;
+            color: white;
+        }
     </style>
 </head>
 <body>
-<div class="container">
-    <h1>📥 Mening xabarlarim</h1>
+    <div class="container">
+        <h1>📥 Mening xabarlarim</h1>
 
-    <div id="messages">
+        <div id="messages">
+            {% for msg in messages %}
+                {% if not msg.taken_by or msg.taken_by.id == request.session.user_id %}
+                    <div class="message" id="msg-{{ msg.id }}">
+                        📩 {{ msg.text }}
+                        {% if not msg.taken_by %}
+                            <button onclick="takeMessage({{ msg.id }}, this)">Olindi ✅</button>
+                        {% else %}
+                            <b>(Olingan: {{ msg.taken_by.username }})</b>
+                        {% endif %}
+                        <button onclick="deleteMessage({{ msg.id }})" class="btn delete-btn">🗑️ O‘chirish</button>
+                    </div>
+                {% endif %}
+            {% endfor %}
+        </div>
+
+        <h2 style="margin-top: 40px;">📬 Siz olgan xabarlar</h2>
+
         {% for msg in messages %}
-            {% if not msg.taken_by or msg.taken_by.id == request.session.user_id %}
-                <div class="message" id="msg-{{ msg.id }}">
-                    📩 {{ msg.text }}
-                    {% if not msg.taken_by %}
-                        <button onclick="takeMessage({{ msg.id }}, this)">Olindi ✅</button>
-                    {% else %}
-                        <b>(Olingan: {{ msg.taken_by.username }})</b>
-                    {% endif %}
-                    <button onclick="deleteMessage({{ msg.id }})" class="btn delete-btn">🗑️ O‘chirish</button>
+            {% if msg.taken_by and msg.taken_by.id == request.session.user_id %}
+                <div class="message" id="my-msg-{{ msg.id }}">
+                    <form method="POST" action="{% url 'edit_message' msg.id %}">
+                        {% csrf_token %}
+                        <textarea name="text" rows="3" style="width: 100%;">{{ msg.text }}</textarea><br>
+                        <button class="btn edit-btn" type="submit">✏️ Tahrirlash</button>
+                        <a href="{% url 'delete_message' msg.id %}">
+                            <button type="button" class="btn delete-btn">🗑️ O‘chirish</button>
+                        </a>
+                    </form>
+                    <button onclick="sendMessageToGroups({{ msg.id }})" class="btn send-btn">📤 Yuborish</button>
                 </div>
             {% endif %}
+        {% empty %}
+            <p>🚫 Sizda hozircha olingan xabarlar yo‘q.</p>
         {% endfor %}
     </div>
 
-    <h2 style="margin-top: 40px;">📬 Siz olgan xabarlar</h2>
-
-    {% for msg in messages %}
-        {% if msg.taken_by and msg.taken_by.id == request.session.user_id %}
-            <div class="message" id="my-msg-{{ msg.id }}">
-                <form method="POST" action="{% url 'edit_message' msg.id %}">
-                    {% csrf_token %}
-                    <textarea name="text" rows="3" style="width: 100%;">{{ msg.text }}</textarea><br>
-                    <button class="btn edit-btn" type="submit">✏️ Tahrirlash</button>
-                    <a href="{% url 'delete_message' msg.id %}">
-                        <button type="button" class="btn delete-btn">🗑️ O‘chirish</button>
-                    </a>
-                </form>
-            </div>
-        {% endif %}
-    {% empty %}
-        <p>🚫 Sizda hozircha olingan xabarlar yo‘q.</p>
-    {% endfor %}
-
-</div>
-
-<script>
-    const socket = new WebSocket('ws://' + window.location.host + '/ws/messages/');
-
-    socket.onmessage = function(e) {
-        const data = JSON.parse(e.data);
-        const box = document.getElementById('messages');
-
-        if (data.type === 'message') {
-            const el = document.createElement('div');
-            el.classList.add('message');
-            el.id = "msg-" + data.id;
-            let takenByText = data.taken_by ? ` (Olingan: ${data.taken_by})` : "";
-            el.innerHTML = `📩 ${data.message} ${takenByText} <button onclick="takeMessage(${data.id}, this)">Olindi ✅</button> <button onclick="deleteMessage(${data.id})" class="btn delete-btn">🗑️ O‘chirish</button>`;
-
-            // Yangi kelgan xabarlarni yuqoriga qo'shish
-            box.insertBefore(el, box.firstChild);
-        } else if (data.type === 'delete') {
-            const el = document.getElementById("msg-" + data.id);
-            if (el) el.remove();
-        } else if (data.type === 'taken') {
-            // Xabarni olingan deb belgilash
-            const msg = document.getElementById("msg-" + data.id);
-            if (msg) {
-                msg.innerHTML = `📩 ${msg.innerText} (Olingan: ${data.taken_by})`;
+    <script>
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
             }
-        }
-    };
-
-    function takeMessage(id, btn) {
-        socket.send(JSON.stringify({
-            action: 'take',
-            id: id
-        }));
-
-        // Xabarni sahifadan olib tashlash
-        const messageDiv = document.getElementById('msg-' + id);
-        if (messageDiv) {
-            messageDiv.remove();
+            return cookieValue;
         }
 
-        // Xabarni olingan deb belgilash
-        setTimeout(() => {
-            location.reload(); // Sahifa yangilanishi
-        }, 1000);
-    }
+        const csrftoken = getCookie('csrftoken'); // ✅ bu yerda aniqlanadi
 
-    // Xabarni o'chirish funksiyasi
-    function deleteMessage(id) {
-        socket.send(JSON.stringify({
-            action: 'delete',
-            id: id
-        }));
+        function sendMessageToGroups(messageId) {
+            const messageText = document.querySelector(`#my-msg-${messageId} textarea`).value;
+            console.log("Yuborilayotgan xabar:", messageText);  // Xabarni konsolda tekshirish
 
-        // Xabarni brauzerda o'chirish
-        const messageDiv = document.getElementById('msg-' + id);
-        if (messageDiv) {
-            messageDiv.remove();
+            // Xabar bo'sh bo'lsa, xatolikni qaytarish
+            if (!messageText || !messageText.trim()) {
+                console.error("Xabar bo'sh!");
+                return;
+            }
+
+            fetch(`/send_to_groups/${messageId}/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrftoken,
+                },
+                body: JSON.stringify({
+                    message: messageText
+                })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    console.log("Xabar jo'natildi:", data);
+                } else {
+                    console.error("Serverdan xatolik:", data.error);
+                }
+            })
+            .catch(err => {
+                console.error("Fetch xatolik:", err);
+            });
         }
-    }
-</script>
+
+
+    </script>
 </body>
 </html>

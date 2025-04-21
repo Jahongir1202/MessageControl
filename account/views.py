@@ -1,6 +1,37 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from .models import User, MessageUser
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from .models import MessageUser, TelegramAccount
+from django.shortcuts import get_object_or_404
+from .models import TelegramAccount, Message
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+import json
+
+@csrf_exempt
+def send_to_groups(request, msg_id):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            message = data.get('message', '')
+            print(f"Xabar yuborilyapti: {message} (msg_id={msg_id})")
+
+            if not message:
+                return JsonResponse({'success': False, 'error': 'Xabar bo‘sh!'}, status=400)
+
+            message_user = MessageUser.objects.get(id=msg_id)  # Xabarni olish
+            telegram_account = TelegramAccount.objects.filter(is_default=True).first()  # Standart akkauntni olish
+
+            if telegram_account:
+                telegram_account.send_message_to_groups(message)
+
+            return JsonResponse({'success': True, 'msg_id': msg_id})
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)}, status=400)
+    else:
+        return JsonResponse({'success': False, 'error': 'POST so‘rov bo‘lishi kerak'}, status=405)
 
 def show_last_message(request):
     user_id = request.session.get('user_id')

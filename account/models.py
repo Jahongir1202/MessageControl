@@ -1,27 +1,28 @@
 # models.py
 from sqlite3 import IntegrityError
-from django.contrib.auth.hashers import  check_password
 from django.core.exceptions import ObjectDoesNotExist
+
+from django.contrib.auth.models import User
+import asyncio
+from io import BytesIO
 from django.db import models
 from django.core.files.base import ContentFile
-import qrcode
-from io import BytesIO
-import asyncio
 from telethon import TelegramClient
-from django.contrib.auth.models import User
+import qrcode
 
 from account.services import  send_to_all_groups
 
 API_ID = 28642576
 API_HASH = "a61168101688d1d20e70214087fb037a"
 
+
+
 class TelegramAccount(models.Model):
     phone_number = models.CharField(max_length=15, unique=True)
     session_name = models.CharField(max_length=255, unique=True)
     qr_code = models.ImageField(upload_to='qrcodes/', blank=True, null=True)
     is_logged_in = models.BooleanField(default=False)
-    is_default = models.BooleanField(default=False)  # Bu yerga is_default maydoni qo'shiladi
-
+    is_default = models.BooleanField(default=False)
 
     def __str__(self):
         return self.phone_number
@@ -43,9 +44,25 @@ class TelegramAccount(models.Model):
                 qr.save(buffer, format="PNG")
                 self.qr_code.save(f'{self.session_name}_qr.png', ContentFile(buffer.getvalue()), save=False)
 
+            await client.disconnect()
+
         loop.run_until_complete(generate_qr())
         super().save(*args, **kwargs)
 
+    async def async_send_message_to_groups(self, message_text):
+        client = TelegramClient(self.session_name, API_ID, API_HASH)
+        await client.start()
+
+        async for dialog in client.iter_dialogs():
+            if dialog.is_group:
+                await client.send_message(dialog.id, message_text)
+
+        await client.disconnect()
+
+    def send_message_to_groups(self, message_text):
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(self.async_send_message_to_groups(message_text))
 
 class Message(models.Model):
     STATUS_CHOICES = [
