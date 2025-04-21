@@ -39,6 +39,16 @@ class MessageConsumer(AsyncWebsocketConsumer):
                             'exclude_channel': self.channel_name
                         }
                     )
+
+                    # Xabarni olgan foydalanuvchiga uni o‘zining xabarlar bo‘limiga olish uchun yuborish
+                    await self.channel_layer.group_send(
+                        self.room_group_name,
+                        {
+                            'type': 'chat_taken',
+                            'id': message_id,
+                            'taken_by': user.username
+                        }
+                    )
             else:
                 print("Foydalanuvchi topilmadi yoki login qilinmagan.")
 
@@ -104,3 +114,11 @@ class MessageConsumer(AsyncWebsocketConsumer):
                 'type': 'delete',
                 'id': event['id']
             }))
+
+    # 🔹 Xabarni olingan deb belgilash
+    async def chat_taken(self, event):
+        await self.send(text_data=json.dumps({
+            'type': 'taken',
+            'id': event['id'],
+            'taken_by': event['taken_by']
+        }))
