@@ -1,11 +1,10 @@
 import json
 from channels.generic.websocket import AsyncWebsocketConsumer
-from django.db import transaction
 from channels.db import database_sync_to_async
+from django.db import transaction
 from asgiref.sync import sync_to_async
 
 from .models import MessageUser, User
-
 
 class MessageConsumer(AsyncWebsocketConsumer):
     async def connect(self):
@@ -22,15 +21,12 @@ class MessageConsumer(AsyncWebsocketConsumer):
 
         if action == 'take':
             message_id = data.get('id')
-
-            # Session orqali user_id ni olish va User modelidan userni topish
             user = await self.get_user_from_session()
 
             if user:
                 success = await self.try_take_message(message_id, user)
-
                 if success:
-                    # boshqa clientlarga xabarni delete qilish haqida yuborish
+                    # Faqat boshqa foydalanuvchilar uchun delete qilish
                     await self.channel_layer.group_send(
                         self.room_group_name,
                         {
@@ -39,8 +35,7 @@ class MessageConsumer(AsyncWebsocketConsumer):
                             'exclude_channel': self.channel_name
                         }
                     )
-
-                    # Xabarni olgan foydalanuvchiga uni o‘zining xabarlar bo‘limiga olish uchun yuborish
+                    # Hamma foydalanuvchilarga olindi deb yuborish
                     await self.channel_layer.group_send(
                         self.room_group_name,
                         {
@@ -50,33 +45,26 @@ class MessageConsumer(AsyncWebsocketConsumer):
                         }
                     )
             else:
-                print("Foydalanuvchi topilmadi yoki login qilinmagan.")
+                print("Foydalanuvchi aniqlanmadi")
 
         elif action == 'send':
             message = data.get('message')
-            msg_id, msg_text = await self.save_message(message)
+            if message:
+                msg_id, msg_text = await self.save_message(message)
+                await self.channel_layer.group_send(
+                    self.room_group_name,
+                    {
+                        'type': 'chat_message',
+                        'message': msg_text,
+                        'id': msg_id
+                    }
+                )
 
-            await self.channel_layer.group_send(
-                self.room_group_name,
-                {
-                    'type': 'chat_message',
-                    'message': msg_text,
-                    'id': msg_id
-                }
-            )
-
-    # 🔹 Xabarni saqlovchi funksiya
-    @sync_to_async
-    def save_message(self, message):
-        msg = MessageUser.objects.create(text=message)
-        return msg.id, msg.text
-
-    # 🔹 Foydalanuvchini sessiondan olish
+    # Foydalanuvchini sessiondan olish
     @database_sync_to_async
     def get_user_from_session(self):
         session = self.scope.get("session")
         user_id = session.get("user_id")
-
         if user_id:
             try:
                 return User.objects.get(id=user_id)
@@ -84,7 +72,7 @@ class MessageConsumer(AsyncWebsocketConsumer):
                 return None
         return None
 
-    # 🔹 Xabarni olish funksiyasi
+    # Xabarni olish
     @database_sync_to_async
     def try_take_message(self, message_id, user):
         try:
@@ -98,7 +86,13 @@ class MessageConsumer(AsyncWebsocketConsumer):
             return False
         return False
 
-    # 🔹 Yangi xabarni yuborish
+    # Xabarni saqlash
+    @sync_to_async
+    def save_message(self, message):
+        msg = MessageUser.objects.create(text=message)
+        return msg.id, msg.text
+
+    # Yangi xabarni yuborish
     async def chat_message(self, event):
         await self.send(text_data=json.dumps({
             'type': 'message',
@@ -107,7 +101,7 @@ class MessageConsumer(AsyncWebsocketConsumer):
             'taken_by': None
         }))
 
-    # 🔹 Xabarni o‘chirish (agar olinsa)
+    # Xabarni o‘chirish (agar olinsa)
     async def chat_delete(self, event):
         if self.channel_name != event['exclude_channel']:
             await self.send(text_data=json.dumps({
@@ -115,7 +109,7 @@ class MessageConsumer(AsyncWebsocketConsumer):
                 'id': event['id']
             }))
 
-    # 🔹 Xabarni olingan deb belgilash
+    # Xabar olinganini ko‘rsatish
     async def chat_taken(self, event):
         await self.send(text_data=json.dumps({
             'type': 'taken',
