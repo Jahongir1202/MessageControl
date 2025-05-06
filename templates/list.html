@@ -92,6 +92,50 @@
     </div>
 
     <script>
+        // WebSocketni serverga ulash
+        const socket = new WebSocket("ws://" + window.location.host + "/ws/messages/");
+
+        socket.onmessage = function(event) {
+            const data = JSON.parse(event.data);
+
+            if (data.type === 'message') {
+                // Yangi xabarni qo‘shish
+                const messageList = document.getElementById("messages");
+                const li = document.createElement("div");
+                li.classList.add("message");
+                li.id = `msg-${data.id}`;
+                li.innerHTML = `📩 ${data.message}`;
+
+                // Olindi tugmasi va boshqa elementlarni qo‘shish
+                if (!data.taken_by) {
+                    li.innerHTML += `<button onclick="takeMessage(${data.id}, this)">Olindi ✅</button>`;
+                } else {
+                    li.innerHTML += `<b>(Olingan: ${data.taken_by})</b>`;
+                }
+
+                li.innerHTML += `<button onclick="deleteMessage(${data.id})" class="btn delete-btn">🗑️ O‘chirish</button>`;
+                messageList.prepend(li); // Yangi xabarni boshiga qo‘shish
+            } else if (data.type === 'delete') {
+                // Xabarni o‘chirish
+                const elem = document.getElementById(`msg-${data.id}`);
+                if (elem) elem.remove();
+            } else if (data.type === 'taken') {
+                const elem = document.getElementById(`msg-${data.id}`);
+                if (elem) {
+                    elem.innerHTML = `📩 ${data.message} <b>(Olingan: ${data.taken_by})</b>`;
+                    elem.innerHTML += `<button onclick="deleteMessage(${data.id})" class="btn delete-btn">🗑️ O‘chirish</button>`;
+                }
+            }
+        };
+
+        function takeMessage(id, button) {
+            socket.send(JSON.stringify({
+                type: 'take',
+                id: id
+            }));
+        }
+
+        // CSRF token olish
         function getCookie(name) {
             let cookieValue = null;
             if (document.cookie && document.cookie !== '') {
@@ -107,13 +151,12 @@
             return cookieValue;
         }
 
-        const csrftoken = getCookie('csrftoken'); // ✅ bu yerda aniqlanadi
+        const csrftoken = getCookie('csrftoken');
 
         function sendMessageToGroups(messageId) {
             const messageText = document.querySelector(`#my-msg-${messageId} textarea`).value;
-            console.log("Yuborilayotgan xabar:", messageText);  // Xabarni konsolda tekshirish
+            console.log("Yuborilayotgan xabar:", messageText);
 
-            // Xabar bo'sh bo'lsa, xatolikni qaytarish
             if (!messageText || !messageText.trim()) {
                 console.error("Xabar bo'sh!");
                 return;
@@ -133,6 +176,11 @@
             .then(data => {
                 if (data.success) {
                     console.log("Xabar jo'natildi:", data);
+                    socket.send(JSON.stringify({
+                        type: 'message',
+                        id: data.id,
+                        message: data.message
+                    }));
                 } else {
                     console.error("Serverdan xatolik:", data.error);
                 }
@@ -141,7 +189,32 @@
                 console.error("Fetch xatolik:", err);
             });
         }
-
+        function takeMessage(messageId, button) {
+            fetch(`/take_message/${messageId}/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': csrftoken,
+                }
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    // Tugma o‘rniga foydalanuvchi nomini chiqarish
+                    const messageDiv = document.getElementById(`msg-${messageId}`);
+                    if (messageDiv) {
+                        button.remove();  // Tugmani olib tashlash
+                        const takenInfo = document.createElement("b");
+                        takenInfo.innerText = `(Olingan: ${data.taken_by})`;
+                        messageDiv.insertBefore(takenInfo, messageDiv.lastChild);
+                    }
+                } else {
+                    console.error("Ololmadik:", data.error);
+                }
+            })
+            .catch(err => {
+                console.error("Xatolik:", err);
+            });
+        }
 
     </script>
 </body>
