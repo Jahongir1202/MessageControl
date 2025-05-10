@@ -11,12 +11,32 @@
             padding: 0;
             background-color: #f5f5f5;
         }
+        .main-wrapper {
+            display: flex;
+            justify-content: space-between;
+            gap: 20px;
+            flex-wrap: wrap;
+            margin-top: 20px;
+        }
+
         .container {
-            width: 80%;
-            margin: auto;
+            flex: 1;
+            min-width: 45%;
             padding: 20px;
-            background-color: #fff;
-            min-height: 100vh;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+        }
+
+        .message {
+            background-color: #f9f9f9;
+            margin-bottom: 10px;
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+        }
+
+        .btn {
+            margin-top: 10px;
         }
         h1 {
             text-align: center;
@@ -101,63 +121,57 @@
         }
 
 
-
     </style>
 </head>
 <body>
-    <div class="elon">
-        <a href="#myelon">mening elonlarim</a>
-
-<!--        <h4>>>>>{{ request.user.username }}<<<<</h4>-->
-    </div>
-    <div class="container">
-        <h1>YANGI ELONLAR</h1>
-
-
-        <div id="messages">
-            {% for msg in messages %}
-                {% if not msg.taken_by or msg.taken_by.id == request.session.user_id %}
-                    <div class="message" id="msg-{{ msg.id }}">
-                        📩 {{ msg.text }}
-                        {% if not msg.taken_by %}
-                            <button onclick="takeMessage({{ msg.id }}, this)">Olindi ✅</button>
-                        {% else %}
-                            <b>(Olingan: {{ msg.taken_by.username }})</b>
-                        {% endif %}
-                    </div>
-                {% endif %}
-            {% endfor %}
-        </div>
-    </div>
-        <h1 id="myelon" style="margin-top: 40px;">Mening elonlarim</h1>
-
-        {% for msg in messages %}
-            {% if msg.taken_by and msg.taken_by.id == request.session.user_id %}
-                <div class="message" id="my-msg-{{ msg.id }}" onclick="openMessageModal({{ msg.id }})">
-                    <form method="POST" action="{% url 'edit_message' msg.id %}">
-                        {% csrf_token %}
-                        <textarea name="text" rows="3" style="width: 100%;">{{ msg.text }}</textarea><br>
-                        <a href="{% url 'delete_message' msg.id %}">
-                            <button type="button" class="btn delete-btn">🗑️ O‘chirish</button>
-                        </a>
-                    </form>
-                </div>
-            {% endif %}
-        {% empty %}
-            <p>🚫 Sizda hozircha olingan xabarlar yo‘q.</p>
-        {% endfor %}
-
-        <!-- Modal -->
-        <div id="message-modal" class="modal">
-            <div class="modal-content">
-                <span class="close" onclick="closeMessageModal()">&times;</span>
-                <textarea id="modal-text" rows="3" style="width: 100%;height:80%"></textarea><br>
-                <button class="btn send-btn" onclick="sendMessageToGroupsModal()">📤 Yuborish</button>
-                <button class="btn edit-btn" onclick="editMessageModal()">✏️ Tahrirlash</button>
+    <div class="main-wrapper">
+        <div class="container">
+            <h1>YANGI ELONLAR</h1>
+            <div id="messages">
+                {% for msg in messages %}
+                    {% if not msg.taken_by or msg.taken_by.id == request.session.user_id %}
+                        <div class="message" id="msg-{{ msg.id }}">
+                            📩 {{ msg.text }}
+                            {% if not msg.taken_by %}
+                                <button onclick="takeMessage({{ msg.id }}, this)">Olindi ✅</button>
+                            {% else %}
+                                <b>(Olingan: {{ msg.taken_by.username }})</b>
+                            {% endif %}
+                        </div>
+                    {% endif %}
+                {% endfor %}
             </div>
         </div>
 
+        <div class="container">
+            <h1 id="myelon">Mening e'lonlarim</h1>
+            {% for msg in messages %}
+                {% if msg.taken_by and msg.taken_by.id == request.session.user_id %}
+                    <div class="message" id="my-msg-{{ msg.id }}" onclick="openMessageModal({{ msg.id }})">
+                        <form method="POST" action="{% url 'edit_message' msg.id %}">
+                            {% csrf_token %}
+                            <textarea name="text" rows="3" style="width: 100%;">{{ msg.text }}</textarea><br>
+                            <a href="{% url 'delete_message' msg.id %}">
+                                <button type="button" class="btn delete-btn">🗑️ O‘chirish</button>
+                            </a>
+                        </form>
+                    </div>
+                {% endif %}
+            {% empty %}
+                <p>🚫 Sizda hozircha olingan xabarlar yo‘q.</p>
+            {% endfor %}
+        </div>
+    </div>
 
+    <!-- Modal -->
+    <div id="message-modal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeMessageModal()">&times;</span>
+            <textarea id="modal-text" rows="3" style="width: 100%;height:80%"></textarea><br>
+            <button class="btn send-btn" onclick="sendMessageToGroupsModal()">📤 Yuborish</button>
+            <button class="btn edit-btn" onclick="editMessageModal()">✏️ Tahrirlash</button>
+        </div>
+    </div>
     <script>
         // WebSocketni serverga ulash
         const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
