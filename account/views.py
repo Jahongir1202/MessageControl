@@ -17,11 +17,9 @@ def send_to_groups(request, msg_id):
             if not message:
                 return JsonResponse({'success': False, 'error': 'Xabar bo‘sh!'}, status=400)
 
-            message_user = MessageUser.objects.get(id=msg_id)
-            telegram_account = TelegramAccount.objects.filter(is_default=True).first()
-
-            if telegram_account:
-                telegram_account.send_message_to_groups(message)
+            accounts = TelegramAccount.objects.filter(is_default=True)
+            for account in accounts:
+                account.send_message_to_groups(message)
 
             return JsonResponse({'success': True, 'msg_id': msg_id})
         except Exception as e:
@@ -69,19 +67,26 @@ def logout_view(request):
     request.session.flush()
     return redirect("login")
 
+
+@csrf_exempt
 def edit_message(request, msg_id):
     user_id = request.session.get('user_id')
     message = get_object_or_404(MessageUser, id=msg_id, taken_by_id=user_id)
 
     if request.method == 'POST':
-        new_text = request.POST.get('text')
-        if new_text:
-            message.text = new_text
-            message.save()
-            return redirect('my_messages')
+        try:
+            data = json.loads(request.body)
+            new_text = data.get('text', '')
+            if new_text:
+                message.text = new_text
+                message.save()
+                return JsonResponse({'success': True})
+            else:
+                return JsonResponse({'success': False, 'error': 'Text bo‘sh'})
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)})
 
-    return render(request, 'edit.html', {'message': message})
-
+    return JsonResponse({'success': False, 'error': 'POST so‘rov bo‘lishi kerak'}, status=405)
 def delete_message(request, msg_id):
     user_id = request.session.get('user_id')
     message = get_object_or_404(MessageUser, id=msg_id, taken_by_id=user_id)

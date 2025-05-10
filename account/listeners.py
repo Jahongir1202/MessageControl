@@ -28,6 +28,10 @@ async def listen(account):
     async def handler(event):
         message = event.message.message
         print(f"🔔 Yangi xabar kelgan: {message}")
+        digit_count = sum(c.isdigit() for c in message)
+        if digit_count < 9:
+            print("⚠️ Xabar rad etildi – raqamlar soni 9 dan kam.")
+            return  # Bazaga yozmasdan chiqamiz
 
         # DBga saqlash
         from asgiref.sync import sync_to_async
