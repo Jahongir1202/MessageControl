@@ -64,19 +64,34 @@
         }
 
         .modal-content {
-            background-color: #fefefe;
-            margin: 5% auto;
-            padding: 20px;
-            border: 1px solid #888;
-            width: 80%;
-        }
+        background-color: #fefefe;
+        margin: 5% auto;
+        padding: 20px;
+        border: 1px solid #888;
+        width: 70%; /* Enini 70% ga o'zgartirildi */
+        height: 70%; /* Bo'yini 70% ga o'zgartirildi */
+        overflow-y: auto; /* Agar xabar uzun bo'lsa, o'qi bo'lishi uchun skroll bar qo'yiladi */
+    }
 
-        .close {
+    .elon {
+            width: 100%;
+            background-color: aliceblue;
+            height: 40px;            position: sticky;    /* Elementni sahifada skroll qilinganida o'z o'rnida qolishini ta'minlaydi */
+            top: 0;              /* Yuqori qismidan boshlanishi */
+            z-index: 10;         /* Boshqa elementlar ustidan ko'rinishini ta'minlash */
+    }
+    .elon > a{
+        color: black
+        position: relative;
+        left: 5%;
+        top: 15%;
+    }
+    .close {
             color: #aaa;
             float: right;
             font-size: 28px;
             font-weight: bold;
-        }
+    }
 
         .close:hover,
         .close:focus {
@@ -85,11 +100,19 @@
             cursor: pointer;
         }
 
+
+
     </style>
 </head>
 <body>
+    <div class="elon">
+        <a href="#myelon">mening elonlarim</a>
+
+<!--        <h4>>>>>{{ request.user.username }}<<<<</h4>-->
+    </div>
     <div class="container">
-        <h1>📥 Mening xabarlarim</h1>
+        <h1>YANGI ELONLAR</h1>
+
 
         <div id="messages">
             {% for msg in messages %}
@@ -101,13 +124,12 @@
                         {% else %}
                             <b>(Olingan: {{ msg.taken_by.username }})</b>
                         {% endif %}
-                        <button onclick="deleteMessage({{ msg.id }})" class="btn delete-btn">🗑️ O‘chirish</button>
                     </div>
                 {% endif %}
             {% endfor %}
         </div>
-
-        <h2 style="margin-top: 40px;">📬 Siz olgan xabarlar</h2>
+    </div>
+        <h1 id="myelon" style="margin-top: 40px;">Mening elonlarim</h1>
 
         {% for msg in messages %}
             {% if msg.taken_by and msg.taken_by.id == request.session.user_id %}
@@ -129,17 +151,17 @@
         <div id="message-modal" class="modal">
             <div class="modal-content">
                 <span class="close" onclick="closeMessageModal()">&times;</span>
-                <textarea id="modal-text" rows="3" style="width: 100%;"></textarea><br>
+                <textarea id="modal-text" rows="3" style="width: 100%;height:80%"></textarea><br>
                 <button class="btn send-btn" onclick="sendMessageToGroupsModal()">📤 Yuborish</button>
                 <button class="btn edit-btn" onclick="editMessageModal()">✏️ Tahrirlash</button>
             </div>
         </div>
 
-    </div>
 
     <script>
         // WebSocketni serverga ulash
-        const socket = new WebSocket("ws://" + window.location.host + "/ws/messages/");
+        const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+        const socket = new WebSocket(`${protocol}://${window.location.host}/ws/messages/`);
 
         socket.onmessage = function(event) {
             const data = JSON.parse(event.data);
@@ -250,7 +272,7 @@
             .then(res => res.json())
             .then(data => {
                 if (data.success) {
-                    console.log("Xabar jo'natildi:", data);
+                    alert("Xabar jo'natildi:", data);
                     socket.send(JSON.stringify({
                         type: 'message',
                         id: data.id,

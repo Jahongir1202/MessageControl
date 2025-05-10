@@ -160,3 +160,7 @@ CHANNEL_LAYERS = {
 AUTHENTICATION_BACKENDS = [
     'django.contrib.auth.backends.ModelBackend',
 ]
+CSRF_TRUSTED_ORIGINS = [
+    "https://*.ngrok-free.app"
+]
+
