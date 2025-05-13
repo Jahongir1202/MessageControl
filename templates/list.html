@@ -11,20 +11,22 @@
             padding: 0;
             background-color: #f5f5f5;
         }
+
         .main-wrapper {
             display: flex;
+            flex-direction: column; /* Ekranning yuqori va pastki qismlari vertikal joylashadi */
+            height: 100vh; /* Ekran balandligiga teng */
             justify-content: space-between;
-            gap: 20px;
-            flex-wrap: wrap;
-            margin-top: 20px;
         }
 
         .container {
-            flex: 1;
-            min-width: 45%;
+            flex: 1; /* Har bir bo'limga teng joy ajratish */
+            overflow-y: auto; /* Agar ko'p habar bo'lsa, scroll qilinadi */
             padding: 20px;
             border: 1px solid #ccc;
             border-radius: 8px;
+            max-height: 100%;
+            box-sizing: border-box;
         }
 
         .message {
@@ -35,9 +37,12 @@
             border: 1px solid #ddd;
         }
 
+        /* Habarlarni o'chirish tugmasi */
         .btn {
+            font-size: 0.9em;
             margin-top: 10px;
         }
+
         h1 {
             text-align: center;
             color: #333;
@@ -49,6 +54,7 @@
             border-radius: 8px;
             background-color: #fefefe;
         }
+
         .btn {
             padding: 6px 10px;
             margin-right: 5px;
@@ -56,18 +62,22 @@
             border: none;
             border-radius: 4px;
         }
+
         .edit-btn {
             background-color: #3498db;
             color: white;
         }
+
         .delete-btn {
             background-color: #e74c3c;
             color: white;
         }
+
         .send-btn {
             background-color: #2ecc71;
             color: white;
         }
+
         /* Modal styles */
         .modal {
             display: none; /* Start as hidden */
@@ -84,43 +94,62 @@
         }
 
         .modal-content {
-        background-color: #fefefe;
-        margin: 5% auto;
-        padding: 20px;
-        border: 1px solid #888;
-        width: 70%; /* Enini 70% ga o'zgartirildi */
-        height: 70%; /* Bo'yini 70% ga o'zgartirildi */
-        overflow-y: auto; /* Agar xabar uzun bo'lsa, o'qi bo'lishi uchun skroll bar qo'yiladi */
-    }
-
-    .elon {
-            width: 100%;
-            background-color: aliceblue;
-            height: 40px;            position: sticky;    /* Elementni sahifada skroll qilinganida o'z o'rnida qolishini ta'minlaydi */
-            top: 0;              /* Yuqori qismidan boshlanishi */
-            z-index: 10;         /* Boshqa elementlar ustidan ko'rinishini ta'minlash */
-    }
-    .elon > a{
-        color: black
-        position: relative;
-        left: 5%;
-        top: 15%;
-    }
-    .close {
-            color: #aaa;
-            float: right;
-            font-size: 28px;
-            font-weight: bold;
-    }
-
-        .close:hover,
-        .close:focus {
-            color: black;
-            text-decoration: none;
-            cursor: pointer;
+            background-color: #fefefe;
+            margin: 5% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 70%; /* Enini 70% ga o'zgartirildi */
+            height: 70%; /* Bo'yini 70% ga o'zgartirildi */
+            overflow-y: auto; /* Agar xabar uzun bo'lsa, o'qi bo'lishi uchun skroll bar qo'yiladi */
         }
 
+        /* Media queries uchun o'zgartirishlar */
+        @media screen and (max-width: 768px) {
+            .main-wrapper {
+                flex-direction: column; /* Kichik ekranlar uchun bo'limlarni vertikal joylashuv */
+            }
 
+            .container {
+                min-width: 100%;
+                margin-bottom: 20px;
+            }
+
+            /* Habarlarni scroll qilinadigan qilish */
+            .message {
+                max-height: 300px;
+                overflow-y: auto;
+            }
+
+            /* Kichik ekranlar uchun sarlavha o'lchamini kamaytirish */
+            h1 {
+                font-size: 1.5em;
+            }
+
+            /* Mobil uchun tugmalarni kichraytirish */
+            .btn {
+                font-size: 0.8em;
+            }
+        }
+
+        @media screen and (max-width: 480px) {
+            /* Juda kichik ekranlar uchun sozlamalar */
+            h1 {
+                font-size: 1.2em;
+            }
+
+            .btn {
+                padding: 4px 8px;
+                font-size: 0.7em;
+            }
+
+            .container {
+                padding: 10px;
+            }
+
+            .message {
+                padding: 10px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -133,7 +162,7 @@
                         <div class="message" id="msg-{{ msg.id }}">
                             📩 {{ msg.text }}
                             {% if not msg.taken_by %}
-                                <button onclick="takeMessage({{ msg.id }}, this)">Olindi ✅</button>
+                                <button id="btn_newmessage" onclick="takeMessage({{ msg.id }}, this)">Olindi ✅</button>
                             {% else %}
                                 <b>(Olingan: {{ msg.taken_by.username }})</b>
                             {% endif %}
@@ -152,7 +181,7 @@
                             {% csrf_token %}
                             <textarea name="text" rows="3" style="width: 100%;">{{ msg.text }}</textarea><br>
                             <a href="{% url 'delete_message' msg.id %}">
-                                <button type="button" class="btn delete-btn">🗑️ O‘chirish</button>
+                                <button id="delete-btn_message" type="button" class="btn delete-btn">🗑️ O‘chirish</button>
                             </a>
                         </form>
                     </div>
@@ -169,13 +198,22 @@
             <span class="close" onclick="closeMessageModal()">&times;</span>
             <textarea id="modal-text" rows="3" style="width: 100%;height:80%"></textarea><br>
             <button class="btn send-btn" onclick="sendMessageToGroupsModal()">📤 Yuborish</button>
-            <button class="btn edit-btn" onclick="editMessageModal()">✏️ Tahrirlash</button>
+            <button id="editMessageModal" class="btn edit-btn" onclick="editMessageModal()">✏️ Tahrirlash</button>
         </div>
     </div>
     <script>
         // WebSocketni serverga ulash
         const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
         const socket = new WebSocket(`${protocol}://${window.location.host}/ws/messages/`);
+        document.getElementById('editMessageModal').addEventListener('click', function() {
+            location.reload();
+        });
+        document.getElementById('delete-btn_message').addEventListener('click', function() {
+            location.reload();
+        });
+        document.getElementById('btn_newmessage').addEventListener('click', function() {
+            location.reload();
+        });
 
         socket.onmessage = function(event) {
             const data = JSON.parse(event.data);

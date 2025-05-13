@@ -117,3 +117,4 @@ class MessageUser(models.Model):
             self.save()
         except ObjectDoesNotExist:
             raise IntegrityError("Foydalanuvchi mavjud emas!")
+
