@@ -163,7 +163,7 @@
         </div>
     </div>
 
-    <!-- Modal -->
+
     <div id="message-modal" class="modal">
         <div class="modal-content">
             <span class="close" onclick="closeMessageModal()">&times;</span>
@@ -207,6 +207,69 @@
                     elem.innerHTML = `📩 ${data.message} <b>(Olingan: ${data.taken_by})</b>`;
                     elem.innerHTML += `<button onclick="deleteMessage(${data.id})" class="btn delete-btn">🗑️ O‘chirish</button>`;
                 }
+=======
+    <h2 style="margin-top: 40px;">📬 Siz olgan xabarlar</h2>
+
+    {% for msg in messages %}
+        {% if msg.taken_by and msg.taken_by.id == request.session.user_id %}
+            <div class="message" id="my-msg-{{ msg.id }}">
+                <form method="POST" action="{% url 'edit_message' msg.id %}">
+                    {% csrf_token %}
+                    <textarea name="text" rows="3" style="width: 100%;">{{ msg.text }}</textarea><br>
+                    <button class="btn edit-btn" type="submit">✏️ Tahrirlash</button>
+                    <a href="{% url 'delete_message' msg.id %}">
+                        <button type="button" class="btn delete-btn">🗑️ O‘chirish</button>
+                    </a>
+                </form>
+            </div>
+        {% endif %}
+    {% empty %}
+        <p>🚫 Sizda hozircha olingan xabarlar yo‘q.</p>
+    {% endfor %}
+
+</div>
+
+<script>
+    const socket = new WebSocket('ws://' + window.location.host + '/ws/messages/');
+
+    socket.onmessage = function(e) {
+        const data = JSON.parse(e.data);
+        const box = document.getElementById('messages');
+
+        if (data.type === 'message') {
+            const el = document.createElement('div');
+            el.id = "msg-" + data.id;
+            let takenByText = data.taken_by ? ` (Olingan: ${data.taken_by})` : "";
+            el.innerHTML = `📩 ${data.message} ${takenByText} <button onclick="takeMessage(${data.id})">Olindi ✅</button>`;
+            if (box.firstChild) {
+                box.insertBefore(el, box.firstChild);
+            } else {
+                box.appendChild(el);
+            }
+        } else if (data.type === 'delete') {
+            const el = document.getElementById("msg-" + data.id);
+            if (el) el.remove();
+        } else if (data.type === 'taken') {
+             const msg = document.getElementById("msg-" + data.id);
+            if (msg) msg.remove();
+
+            // Agar olgan foydalanuvchi hozirgi foydalanuvchi bo‘lsa, pastga chiqarsin
+            if (data.taken_by === "{{ request.user.username }}") {
+                const myBox = document.querySelector(".container");
+                const myMsg = document.createElement('div');
+                myMsg.className = "message";
+                myMsg.id = "my-msg-" + data.id;
+                myMsg.innerHTML = `
+                    <form method="POST" action="/messages/edit/${data.id}/">
+                        <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+                        <textarea name="text" rows="3" style="width: 100%;">${data.message}</textarea><br>
+                        <button class="btn edit-btn" type="submit">✏️ Tahrirlash</button>
+                        <a href="/messages/delete/${data.id}/">
+                            <button type="button" class="btn delete-btn">🗑️ O‘chirish</button>
+                        </a>
+                    </form>
+                `;
+                myBox.appendChild(myMsg);
             }
         };
 
@@ -216,6 +279,10 @@
                 id: id
             }));
         }
+
+
+
+    };
 
         // CSRF token olish
         function getCookie(name) {
