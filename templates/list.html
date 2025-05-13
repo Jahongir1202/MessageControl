@@ -162,7 +162,7 @@
                         <div class="message" id="msg-{{ msg.id }}">
                             📩 {{ msg.text }}
                             {% if not msg.taken_by %}
-                                <button id="btn_newmessage" onclick="takeMessage({{ msg.id }}, this)">Olindi ✅</button>
+                                <button id="reload_message" onclick="takeMessage({{ msg.id }}, this)">Olindi ✅</button>
                             {% else %}
                                 <b>(Olingan: {{ msg.taken_by.username }})</b>
                             {% endif %}
@@ -181,7 +181,7 @@
                             {% csrf_token %}
                             <textarea name="text" rows="3" style="width: 100%;">{{ msg.text }}</textarea><br>
                             <a href="{% url 'delete_message' msg.id %}">
-                                <button id="delete-btn_message" type="button" class="btn delete-btn">🗑️ O‘chirish</button>
+                                <button id="reload_ochirish" type="button" class="btn delete-btn">🗑️ O‘chirish</button>
                             </a>
                         </form>
                     </div>
@@ -208,12 +208,23 @@
         document.getElementById('editMessageModal').addEventListener('click', function() {
             location.reload();
         });
-        document.getElementById('delete-btn_message').addEventListener('click', function() {
-            location.reload();
-        });
-        document.getElementById('btn_newmessage').addEventListener('click', function() {
-            location.reload();
-        });
+        document.addEventListener('DOMContentLoaded', function () {
+        const reloadOchirish = document.getElementById('reload_ochirish');
+        const reloadMessage = document.getElementById('reload_message');
+
+        if (reloadOchirish) {
+            reloadOchirish.addEventListener('click', function () {
+                location.reload();
+            });
+        }
+
+        if (reloadMessage) {
+            reloadMessage.addEventListener('click', function () {
+                location.reload();
+            });
+        }
+    });
+
 
         socket.onmessage = function(event) {
             const data = JSON.parse(event.data);
