@@ -32,5 +32,5 @@ from .models import MessageUser
 
 class MessageUserAdmin(admin.ModelAdmin):
     list_display = ('text', 'taken_by', 'created_at')
-
+    list_filter = ('taken_by',)
 admin.site.register(MessageUser, MessageUserAdmin)
