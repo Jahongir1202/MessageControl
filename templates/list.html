@@ -150,12 +150,32 @@
                 padding: 10px;
             }
         }
+        .reload-btn {
+            background-color: #4CAF50;
+            color: white;
+            padding: 12px 24px;
+            font-size: 16px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            margin-top: 20px;
+        }
+
+        .reload-btn:hover {
+            background-color: #45a049;
+        }
+
+        .reload-btn:active {
+            background-color: #3e8e41;
+        }
     </style>
 </head>
 <body>
     <div class="main-wrapper">
         <div class="container">
-            <h1>YANGI ELONLAR</h1>
+            <h1>YANGI ELONLAR</h1>     <button id="reloadPage" class="reload-btn">🔄 Sahifani yangilash</button>
+
             <div id="messages">
                 {% for msg in messages %}
                     {% if not msg.taken_by or msg.taken_by.id == request.session.user_id %}
@@ -202,6 +222,9 @@
         </div>
     </div>
     <script>
+        document.getElementById('reloadPage').addEventListener('click', function() {
+            location.reload();
+        });
         // WebSocketni serverga ulash
         const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
         const socket = new WebSocket(`${protocol}://${window.location.host}/ws/messages/`);
