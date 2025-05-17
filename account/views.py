@@ -87,15 +87,12 @@ def edit_message(request, msg_id):
             return JsonResponse({'success': False, 'error': str(e)})
 
     return JsonResponse({'success': False, 'error': 'POST so‘rov bo‘lishi kerak'}, status=405)
-@csrf_exempt  # agar siz token yubormasangiz
 def delete_message(request, msg_id):
     user_id = request.session.get('user_id')
-    try:
-        message = MessageUser.objects.get(id=msg_id, taken_by_id=user_id)
-        message.delete()
-        return JsonResponse({'success': True})
-    except MessageUser.DoesNotExist:
-        return JsonResponse({'success': False, 'error': 'Xabar topilmadi'})
+    message = get_object_or_404(MessageUser, id=msg_id, taken_by_id=user_id)
+    message.delete()
+    return redirect('my_messages')
+
 @csrf_exempt
 def take_message(request, id):
     if request.method == 'POST':

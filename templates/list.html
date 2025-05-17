@@ -4,8 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mening xabarlarim</title>
-    <meta name="csrf-token" content="{{ csrf_token }}">
-
     <style>
         body {
             font-family: sans-serif;
@@ -152,19 +150,39 @@
                 padding: 10px;
             }
         }
+        .reload-btn {
+            background-color: #4CAF50;
+            color: white;
+            padding: 12px 24px;
+            font-size: 16px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            margin-top: 20px;
+        }
+
+        .reload-btn:hover {
+            background-color: #45a049;
+        }
+
+        .reload-btn:active {
+            background-color: #3e8e41;
+        }
     </style>
 </head>
 <body>
     <div class="main-wrapper">
         <div class="container">
-            <h1>YANGI ELONLAR</h1>
+            <h1>YANGI ELONLAR</h1>     <button id="reloadPage" class="reload-btn">🔄 Sahifani yangilash</button>
+
             <div id="messages">
                 {% for msg in messages %}
                     {% if not msg.taken_by or msg.taken_by.id == request.session.user_id %}
                         <div class="message" id="msg-{{ msg.id }}">
                             📩 {{ msg.text }}
                             {% if not msg.taken_by %}
-                                <button id="reload_message" onclick="takeMessage({{ msg.id }})">Olindi ✅</button>
+                                <button id="reload_message" onclick="takeMessage({{ msg.id }}, this)">Olindi ✅</button>
                             {% else %}
                                 <b>(Olingan: {{ msg.taken_by.username }})</b>
                             {% endif %}
@@ -178,20 +196,20 @@
             <h1 id="myelon">Mening e'lonlarim</h1>
             {% for msg in messages %}
                 {% if msg.taken_by and msg.taken_by.id == request.session.user_id %}
-                    <div class="message" id="my-msg-{{ msg.id }}">
-                        <textarea name="text" rows="3" style="width: 100%;">{{ msg.text }}</textarea><br>
-                        <button type="button"
-                                class="btn delete-btn"
-                                onclick="deleteMessage(event, {{ msg.id }})">
-                            🗑️ O‘chirish
-                        </button>
+                    <div class="message" id="my-msg-{{ msg.id }}" onclick="openMessageModal({{ msg.id }})">
+                        <form method="POST" action="{% url 'edit_message' msg.id %}">
+                            {% csrf_token %}
+                            <textarea name="text" rows="3" style="width: 100%;">{{ msg.text }}</textarea><br>
+                            <a href="{% url 'delete_message' msg.id %}">
+                                <button id="reload_ochirish" type="button" class="btn delete-btn">🗑️ O‘chirish</button>
+                            </a>
+                        </form>
                     </div>
                 {% endif %}
             {% empty %}
                 <p>🚫 Sizda hozircha olingan xabarlar yo‘q.</p>
             {% endfor %}
         </div>
-
     </div>
 
 
@@ -204,6 +222,9 @@
         </div>
     </div>
     <script>
+        document.getElementById('reloadPage').addEventListener('click', function() {
+            location.reload();
+        });
         // WebSocketni serverga ulash
         const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
         const socket = new WebSocket(`${protocol}://${window.location.host}/ws/messages/`);
@@ -227,10 +248,6 @@
         }
     });
 
-    function takeMessage(messageId) {
-        // Sahifani qayta yuklash
-        location.reload();
-    }
 
         socket.onmessage = function(event) {
             const data = JSON.parse(event.data);
@@ -354,36 +371,6 @@
             }
         }
         return cookieValue;
-    }
-
-    function deleteMessage(event, msgId) {
-        event.preventDefault();
-
-        fetch(`/delete-message/${msgId}/`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': getCSRFToken()
-            },
-            body: JSON.stringify({})
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                const messageDiv = document.getElementById('my-msg-' + msgId);
-                if (messageDiv) {
-                    messageDiv.remove();
-                }
-            } else {
-                alert(data.error || 'O‘chirishda xatolik yuz berdi');
-            }
-        })
-        .catch(error => console.error('Xatolik:', error));
-    }
-
-
-    function getCSRFToken() {
-        return document.querySelector('meta[name="csrf-token"]').getAttribute('content');
     }
 
 
